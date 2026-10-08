@@ -1,0 +1,44 @@
+# Dependencies
+node_modules/
+
+# Build and compilation outputs
+dist/
+.dist/
+.generated/
+out-tsc/
+.tsbuildinfo
+
+# Debug/execution logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Environment and secrets (local development only)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
+
+# Temporary and test files
+.temp/
+temp/
+coverage/
+.nyc_output/
+.cache/
+test-output/
+__snapshots__/
+
+# IDEs and System files
+.DS_Store
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
