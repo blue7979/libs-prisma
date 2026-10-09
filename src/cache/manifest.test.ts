@@ -28,49 +28,28 @@ describe.component('manifest cache module', () => {
     vi.clearAllMocks();
   });
 
-  function writeSchema(name: string, content: string): string {
-    sb.writeFile(name, content);
-    return sb.resolve(name);
-  }
-
-  function outputIntact(value: boolean): void {
-    isOutputIntactSpy.mockReturnValue(value);
-  }
-
-  function absToRel(abs: string): string {
-    return relative(sb.root, abs);
-  }
-
-  function schemaDirAbs(): string {
-    return sb.root;
-  }
-
-  function outputDirAbs(): string {
-    return sb.root;
-  }
-
   // ---------------------------------------------------------------------------
   // collectSchemaFiles
   // ---------------------------------------------------------------------------
   describe('collectSchemaFiles', () => {
     test('GIVEN schema dir with 3 prisma files WHEN called THEN returns size/mtime record exactly for .prisma files only', () => {
-      writeSchema('schema.prisma', 'datasource db { provider = "postgres" }');
-      writeSchema('users.prisma', 'model User { id Int }');
+      sb.writeFile('schema.prisma', 'datasource db { provider = "postgres" }');
+      sb.writeFile('users.prisma', 'model User { id Int }');
       sb.writeFile('notes.txt', 'should be ignored');
 
-      const out = collectSchemaFiles(schemaDirAbs());
+      const out = collectSchemaFiles(sb.root);
 
       expect(Object.keys(out).sort()).toEqual(['schema.prisma', 'users.prisma']);
       for (const k of Object.keys(out)) {
         const st = sb.stat(k);
-        expect(out[k].size).toBe(st.size);
-        expect(out[k].mtimeMs).toBe(st.mtimeMs);
+        expect(out[k].size).toBe(st!.size);
+        expect(out[k].mtimeMs).toBe(st!.mtimeMs);
       }
       vt.debugSnapshot(Object.keys(out));
     });
 
     test('GIVEN empty schema dir WHEN called THEN returns empty object (no crash)', () => {
-      const out = collectSchemaFiles(schemaDirAbs());
+      const out = collectSchemaFiles(sb.root);
       expect(out).toEqual({});
       vt.debugSnapshot(out);
     });
@@ -81,17 +60,17 @@ describe.component('manifest cache module', () => {
   // ---------------------------------------------------------------------------
   describe('atomic manifest write/read', () => {
     test('GIVEN schema files WHEN writeManifest THEN manifest file created with correct JSON shape and can be parsed', () => {
-      writeSchema('schema.prisma', 'generator client { provider = "prisma-client-js" }');
+      sb.writeFile('schema.prisma', 'generator client { provider = "prisma-client-js" }');
 
-      writeManifest(OTS, schemaDirAbs(), sb.root);
+      writeManifest(OTS, sb.root, sb.root);
 
       const manifestAbs = getManifestPathSpy.mock.results[0]?.value satisfies string;
-      const manifestRel = absToRel(manifestAbs);
+      const manifestRel = relative(sb.root, manifestAbs);
       const raw = sb.readFile(manifestRel, 'utf-8');
       const parsed = JSON.parse(raw);
 
       expect(parsed.version).toBe(PRISMA.CACHE_MANIFEST_VERSION);
-      expect(parsed.schemaDir).toBe(schemaDirAbs());
+      expect(parsed.schemaDir).toBe(sb.root);
       expect(parsed.generatedAt).toEqual(expect.any(String));
       expect(Object.keys(parsed.schemaFiles)).toEqual(['schema.prisma']);
       vt.debugSnapshot({ version: parsed.version, schemaKeys: Object.keys(parsed.schemaFiles) });
@@ -101,9 +80,9 @@ describe.component('manifest cache module', () => {
       const manifestFilename = `mf-deep-${PRISMA.CACHE_MANIFEST_FILENAME}`;
       getManifestPathSpy.mockReturnValue(sb.resolve(`deeply/nested/${manifestFilename}`));
 
-      writeSchema('s.prisma', '//empty');
+      sb.writeFile('s.prisma', '//empty');
 
-      expect(() => writeManifest(OTS, schemaDirAbs(), sb.root)).not.toThrow();
+      expect(() => writeManifest(OTS, sb.root, sb.root)).not.toThrow();
       expect(sb.exists(`deeply/nested/${manifestFilename}`)).toBe(true);
       vt.debugSnapshot({
         manifestCreated: true,
@@ -117,24 +96,24 @@ describe.component('manifest cache module', () => {
   // ---------------------------------------------------------------------------
   describe('isSchemaCached', () => {
     function warmManifest(): void {
-      outputIntact(true);
-      writeSchema('a.prisma', '// a');
-      writeSchema('b.prisma', '// b');
-      writeManifest(OTS, schemaDirAbs(), sb.root);
+      isOutputIntactSpy.mockReturnValue(true);
+      sb.writeFile('a.prisma', '// a');
+      sb.writeFile('b.prisma', '// b');
+      writeManifest(OTS, sb.root, sb.root);
     }
 
     test('CASE 1: GIVEN output is NOT intact (missing files) THEN returns false, does not even open manifest', () => {
       warmManifest();
-      outputIntact(false);
+      isOutputIntactSpy.mockReturnValue(false);
 
-      const result = isSchemaCached(OTS, schemaDirAbs(), outputDirAbs(), sb.root);
+      const result = isSchemaCached(OTS, sb.root, sb.root, sb.root);
       expect(result).toBe(false);
       vt.debugSnapshot(result);
     });
 
     test('CASE 2: GIVEN output intact but no manifest file exists THEN returns false', () => {
-      outputIntact(true);
-      const result = isSchemaCached(OTS, schemaDirAbs(), outputDirAbs(), sb.root);
+      isOutputIntactSpy.mockReturnValue(true);
+      const result = isSchemaCached(OTS, sb.root, sb.root, sb.root);
       expect(result).toBe(false);
       vt.debugSnapshot(result);
     });
@@ -142,30 +121,30 @@ describe.component('manifest cache module', () => {
     test('CASE 3: GIVEN manifest has wrong version THEN returns false', () => {
       warmManifest();
       const manifestAbs = getManifestPathSpy.mock.results.at(-1)?.value satisfies string;
-      const manifestRel = absToRel(manifestAbs);
+      const manifestRel = relative(sb.root, manifestAbs);
       const broken = JSON.parse(sb.readFile(manifestRel, 'utf-8'));
       broken.version = 999;
       sb.writeFile(manifestRel, JSON.stringify(broken));
 
-      const result = isSchemaCached(OTS, schemaDirAbs(), outputDirAbs(), sb.root);
+      const result = isSchemaCached(OTS, sb.root, sb.root, sb.root);
       expect(result).toBe(false);
       vt.debugSnapshot(result);
     });
 
     test('CASE 4: GIVEN schema files fingerprint changed (mtime/size) THEN returns false', () => {
       warmManifest();
-      writeSchema('a.prisma', '// a (modified — longer content)');
+      sb.writeFile('a.prisma', '// a (modified — longer content)');
 
-      const result = isSchemaCached(OTS, schemaDirAbs(), outputDirAbs(), sb.root);
+      const result = isSchemaCached(OTS, sb.root, sb.root, sb.root);
       expect(result).toBe(false);
       vt.debugSnapshot(result);
     });
 
     test('CASE 5: GIVEN a new schema file was added AND manifest is stale THEN returns false', () => {
       warmManifest();
-      writeSchema('c.prisma', '// brand new model');
+      sb.writeFile('c.prisma', '// brand new model');
 
-      const result = isSchemaCached(OTS, schemaDirAbs(), outputDirAbs(), sb.root);
+      const result = isSchemaCached(OTS, sb.root, sb.root, sb.root);
       expect(result).toBe(false);
       vt.debugSnapshot(result);
     });
@@ -173,7 +152,7 @@ describe.component('manifest cache module', () => {
     test('CASE 6 (HAPPY): GIVEN output intact + correct version + fingerprints all match THEN returns true (cache HIT)', () => {
       warmManifest();
 
-      const result = isSchemaCached(OTS, schemaDirAbs(), outputDirAbs(), sb.root);
+      const result = isSchemaCached(OTS, sb.root, sb.root, sb.root);
       expect(result).toBe(true);
       vt.debugSnapshot(result);
     });
@@ -184,18 +163,18 @@ describe.component('manifest cache module', () => {
   // ---------------------------------------------------------------------------
   describe('withSchemaCache', () => {
     test('GIVEN useCache=true AND cache hit THEN heavyWork is NEVER called and returns hit:true with cacheHit=true', async () => {
-      outputIntact(true);
-      writeSchema('s.prisma', '//');
-      writeManifest(OTS, schemaDirAbs(), sb.root);
+      isOutputIntactSpy.mockReturnValue(true);
+      sb.writeFile('s.prisma', '//');
+      writeManifest(OTS, sb.root, sb.root);
 
       const heavy = vi.fn().mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
 
       const result = await withSchemaCache(
         {
           otsName: OTS,
-          schemaDir: schemaDirAbs(),
+          schemaDir: sb.root,
           prismaConfigPath: sb.resolve('prisma.config.ts'),
-          clientOutputDir: outputDirAbs(),
+          clientOutputDir: sb.root,
           projectRoot: sb.root,
           useCache: true,
         },
@@ -211,18 +190,18 @@ describe.component('manifest cache module', () => {
     });
 
     test('GIVEN useCache=false THEN heavyWork is ALWAYS called even if cache would hit (cache bypass)', async () => {
-      outputIntact(true);
-      writeSchema('s.prisma', '//');
-      writeManifest(OTS, schemaDirAbs(), sb.root);
+      isOutputIntactSpy.mockReturnValue(true);
+      sb.writeFile('s.prisma', '//');
+      writeManifest(OTS, sb.root, sb.root);
 
       const heavy = vi.fn().mockResolvedValue({ exitCode: 0, stdout: 'generated', stderr: '' });
 
       await withSchemaCache(
         {
           otsName: OTS,
-          schemaDir: schemaDirAbs(),
+          schemaDir: sb.root,
           prismaConfigPath: sb.resolve('prisma.config.ts'),
-          clientOutputDir: outputDirAbs(),
+          clientOutputDir: sb.root,
           projectRoot: sb.root,
           useCache: false,
         },
@@ -234,8 +213,8 @@ describe.component('manifest cache module', () => {
     });
 
     test('GIVEN cache miss AND heavyWork exits 0 THEN manifest is written with NEW fingerprints', async () => {
-      outputIntact(true);
-      writeSchema('fresh.prisma', 'model Fresh { id Int }');
+      isOutputIntactSpy.mockReturnValue(true);
+      sb.writeFile('fresh.prisma', 'model Fresh { id Int }');
       const beforeCount = sb.list('.').length;
 
       const heavy = vi.fn().mockResolvedValue({ exitCode: 0, stdout: 'ok', stderr: '' });
@@ -243,9 +222,9 @@ describe.component('manifest cache module', () => {
       const res = await withSchemaCache(
         {
           otsName: OTS,
-          schemaDir: schemaDirAbs(),
+          schemaDir: sb.root,
           prismaConfigPath: sb.resolve('prisma.config.ts'),
-          clientOutputDir: outputDirAbs(),
+          clientOutputDir: sb.root,
           projectRoot: sb.root,
           useCache: true,
         },
@@ -261,8 +240,8 @@ describe.component('manifest cache module', () => {
     });
 
     test('GIVEN heavyWork returns non-zero exit THEN manifest is NOT persisted (no false positive on next run)', async () => {
-      outputIntact(true);
-      writeSchema('bad.prisma', 'broken syntax //');
+      isOutputIntactSpy.mockReturnValue(true);
+      sb.writeFile('bad.prisma', 'broken syntax //');
       const before = sb.list('.').length;
 
       const heavy = vi
@@ -272,9 +251,9 @@ describe.component('manifest cache module', () => {
       await withSchemaCache(
         {
           otsName: OTS,
-          schemaDir: schemaDirAbs(),
+          schemaDir: sb.root,
           prismaConfigPath: sb.resolve('prisma.config.ts'),
-          clientOutputDir: outputDirAbs(),
+          clientOutputDir: sb.root,
           projectRoot: sb.root,
           useCache: true,
         },
@@ -287,15 +266,15 @@ describe.component('manifest cache module', () => {
     });
 
     test('GIVEN heavyWork ctx THEN receives resolved {schemaDir, clientOutputDir} from params', async () => {
-      outputIntact(false);
+      isOutputIntactSpy.mockReturnValue(false);
       const heavy = vi.fn().mockResolvedValue({ exitCode: 0, stdout: '', stderr: '' });
 
       await withSchemaCache(
         {
           otsName: OTS,
-          schemaDir: schemaDirAbs(),
+          schemaDir: sb.root,
           prismaConfigPath: sb.resolve('prisma.config.ts'),
-          clientOutputDir: outputDirAbs(),
+          clientOutputDir: sb.root,
           projectRoot: sb.root,
           useCache: true,
         },
@@ -303,13 +282,13 @@ describe.component('manifest cache module', () => {
       );
 
       expect(heavy).toHaveBeenCalledWith({
-        schemaDir: schemaDirAbs(),
-        clientOutputDir: outputDirAbs(),
+        schemaDir: sb.root,
+        clientOutputDir: sb.root,
       });
       const rawCtx = heavy.mock.calls[0]?.[0];
       vt.debugSnapshot({
-        schemaDir: rawCtx?.schemaDir ? absToRel(rawCtx.schemaDir) : '',
-        clientOutputDir: rawCtx?.clientOutputDir ? absToRel(rawCtx.clientOutputDir) : '',
+        schemaDir: rawCtx?.schemaDir ? relative(sb.root, rawCtx.schemaDir) : '',
+        clientOutputDir: rawCtx?.clientOutputDir ? relative(sb.root, rawCtx.clientOutputDir) : '',
       });
     });
   });

@@ -76,9 +76,9 @@ export function buildPrismaPostgresConnectionUrl(
     POSTGRESQL_DATABASE = '',
   } = cfg as unknown as Record<string, string | undefined>;
 
-  const internalHostName = `postgres-${name}`;
+  const internalHostName = `${DOCKER.OTS.DATABASE.POSTGRES}-${name}`;
   const inContainer = forceContainerFormat || _isRunningInContainer();
-  const host = inContainer ? internalHostName : 'localhost';
+  const host = inContainer ? internalHostName : DOCKER.CONTAINER.LOCAL_HOST;
   const port = inContainer ? DEFAULT_POSTGRES_PORT : (cfg.localPort ?? DEFAULT_POSTGRES_PORT);
 
   return `prisma+postgres://${encodeURIComponent(POSTGRESQL_USERNAME)}:${encodeURIComponent(POSTGRESQL_PASSWORD)}@${host}:${port}/${POSTGRESQL_DATABASE}`;
@@ -110,7 +110,7 @@ export function buildPrismaMongodbConnectionUrl(
     MONGODB_DATABASE = '',
   } = cfg as unknown as Record<string, string | undefined>;
 
-  const internalHostName = `mongodb-${name}`;
+  const internalHostName = `${DOCKER.OTS.DATABASE.MONGODB}-${name}`;
   const inContainer = forceContainerFormat || _isRunningInContainer();
   const host = inContainer ? internalHostName : DOCKER.CONTAINER.LOCAL_HOST;
   const port = inContainer ? DEFAULT_MONGODB_PORT : (cfg.localPort ?? DEFAULT_MONGODB_PORT);

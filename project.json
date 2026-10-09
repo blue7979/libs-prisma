@@ -6,9 +6,5 @@
   "mounts": ["src"],
   "volumes": ["node_modules"],
   "type": "library",
-  "description": "Prisma orchestration library — schema generate / db push / seed / pipeline",
-  "tags": ["ts:lib", "scope:libs"],
-  "metadata": {
-    "description": "Prisma orchestration library — schema generate / db push / seed / pipeline orchestration with typed retry strategies."
-  }
+  "tags": ["ts:lib", "scope:libs"]
 }
