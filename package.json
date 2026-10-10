@@ -18,6 +18,8 @@
     "@infra/config": "workspace:*",
     "@infra/definitions": "workspace:*",
     "@infra/kits": "workspace:*",
-    "@infra/utils": "workspace:*"
+    "@infra/utils": "workspace:*",
+    "@prisma/adapter-better-sqlite3": "^7.8.0",
+    "better-sqlite3": "^13.0.3"
   }
 }
