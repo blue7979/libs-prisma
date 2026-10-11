@@ -2,11 +2,13 @@ import * as adapterCacheMod from './adapter-cache';
 import type { PrismaDatabaseType, PrismaOtsName } from '../types';
 import { createPrismaClient } from './client-factory';
 import type { PrismaClassConstructor } from './types';
+import { afterEach, beforeEach, debugSnapshot, describe, expect, test, useSandbox, vi } from '@infra/testing';
+
 
 describe.unit('runtime/client-factory.ts — createPrismaClient (UNIT, no real DB)', () => {
   const PG_OTS = 'main' as any as PrismaOtsName<'postgres'>;
 
-  let sb: ReturnType<typeof vt.useSandbox>;
+  let sb: ReturnType<typeof useSandbox>;
   let getOrCreateAdapterSpy: ReturnType<typeof vi.spyOn>;
 
   /** 랜덤 접미어 추가 — 모듈 스코프 Map을 공유하므로 TC간 같은 캐시 키 충돌 방지 */
@@ -29,7 +31,7 @@ describe.unit('runtime/client-factory.ts — createPrismaClient (UNIT, no real D
   }
 
   beforeEach(() => {
-    sb = vt.useSandbox();
+    sb = useSandbox();
     sb.reset();
     getOrCreateAdapterSpy = vi.spyOn(adapterCacheMod, 'getOrCreateAdapter').mockImplementation(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -63,7 +65,7 @@ describe.unit('runtime/client-factory.ts — createPrismaClient (UNIT, no real D
       );
       expect(r1).toBe(r2);
       expect(adapterFactory).toHaveBeenCalledTimes(1);
-      vt.debugSnapshot({
+      debugSnapshot({
         sameRef: r1 === r2,
         factoryCalls: adapterFactory.mock.calls.length,
       });
@@ -88,7 +90,7 @@ describe.unit('runtime/client-factory.ts — createPrismaClient (UNIT, no real D
       );
       expect(r1).not.toBe(r2);
       expect(adapterFactory).toHaveBeenCalledTimes(2);
-      vt.debugSnapshot({
+      debugSnapshot({
         diffRef: r1 !== r2,
         factoryCalls: adapterFactory.mock.calls.length,
       });
@@ -113,7 +115,7 @@ describe.unit('runtime/client-factory.ts — createPrismaClient (UNIT, no real D
       );
       expect(r1).toBe(r2);
       expect(adapterFactory).toHaveBeenCalledTimes(1);
-      vt.debugSnapshot({
+      debugSnapshot({
         anonymousName: anonCls.name,
         cacheHitSame: r1 === r2,
         factoryCalls: adapterFactory.mock.calls.length,
@@ -139,7 +141,7 @@ describe.unit('runtime/client-factory.ts — createPrismaClient (UNIT, no real D
       expect(getOrCreateAdapterSpy).toHaveBeenCalledTimes(1);
       const callOpts = getOrCreateAdapterSpy.mock.calls[0]?.[3];
       expect(callOpts).toStrictEqual({ forceContainerFormat: true });
-      vt.debugSnapshot({ callOpts });
+      debugSnapshot({ callOpts });
     });
 
     test('GIVEN opts 생략 WHEN called THEN getOrCreateAdapter opts는 기본 {}로 전달', () => {
@@ -158,7 +160,7 @@ describe.unit('runtime/client-factory.ts — createPrismaClient (UNIT, no real D
         adapterFactory as any,
         {},
       );
-      vt.debugSnapshot({
+      debugSnapshot({
         optsArg: getOrCreateAdapterSpy.mock.calls[0]?.[3],
       });
     });
@@ -183,7 +185,7 @@ describe.unit('runtime/client-factory.ts — createPrismaClient (UNIT, no real D
       );
       expect(constructorSpy).toHaveBeenCalledTimes(1);
       expect(constructorSpy).toHaveBeenCalledWith({ adapter: adapterInst });
-      vt.debugSnapshot({
+      debugSnapshot({
         constructorCalledWith: constructorSpy.mock.calls[0]?.[0],
       });
     });
@@ -228,7 +230,7 @@ describe.unit('runtime/client-factory.ts — createPrismaClient (UNIT, no real D
         adapterFactory as any,
       );
       expect(adapterFactory).toHaveBeenCalledTimes(1);
-      vt.debugSnapshot({
+      debugSnapshot({
         sharedFactoryCalls: adapterFactory.mock.calls.length,
       });
     });

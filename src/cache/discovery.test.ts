@@ -2,12 +2,14 @@ import { symlinkSync } from 'node:fs';
 import { relative, join } from 'node:path';
 
 import { collectPrismaClientDirs } from './discovery';
+import { beforeEach, debugSnapshot, describe, expect, test, useSandbox } from '@infra/testing';
+
 
 describe.component('collectPrismaClientDirs', () => {
-  let sb: ReturnType<typeof vt.useSandbox>;
+  let sb: ReturnType<typeof useSandbox>;
 
   beforeEach(() => {
-    sb = vt.useSandbox();
+    sb = useSandbox();
     sb.reset();
   });
 
@@ -19,7 +21,7 @@ describe.component('collectPrismaClientDirs', () => {
     const result = collectPrismaClientDirs({ rootDir: sb.root });
 
     expect(result).toEqual([]);
-    vt.debugSnapshot(toRel(result));
+    debugSnapshot(toRel(result));
   });
 
   test('GIVEN .prisma suffixed dirs in various depths WHEN called THEN discovers all and sorts ascending', () => {
@@ -34,7 +36,7 @@ describe.component('collectPrismaClientDirs', () => {
 
     expect(result).toEqual([p2, p3, p1].sort());
     expect(result).toHaveLength(3);
-    vt.debugSnapshot(toRel(result));
+    debugSnapshot(toRel(result));
   });
 
   test('GIVEN .prisma dirs inside node_modules or .git* WHEN called THEN skips them entirely', () => {
@@ -47,7 +49,7 @@ describe.component('collectPrismaClientDirs', () => {
 
     expect(result).toEqual([ok]);
     expect(result).toHaveLength(1);
-    vt.debugSnapshot(toRel(result));
+    debugSnapshot(toRel(result));
   });
 
   test('GIVEN searchDirs option WHEN called THEN restricts walk only to given subdirs', () => {
@@ -61,7 +63,7 @@ describe.component('collectPrismaClientDirs', () => {
     });
 
     expect(result).toEqual([inApps]);
-    vt.debugSnapshot(toRel(result));
+    debugSnapshot(toRel(result));
   });
 
   test('GIVEN cyclic symlink in dir tree WHEN called THEN visited Set prevents infinite recursion (terminates without throw)', () => {
@@ -77,7 +79,7 @@ describe.component('collectPrismaClientDirs', () => {
     }).not.toThrow();
     expect(result.length).toBeGreaterThanOrEqual(1);
     expect(result.includes(a)).toBe(true);
-    vt.debugSnapshot({
+    debugSnapshot({
       count: result.length,
       includesA: result.includes(a),
       rel: toRel(result).slice(0, 3),
@@ -93,6 +95,6 @@ describe.component('collectPrismaClientDirs', () => {
 
     expect(result).toEqual([client]);
     expect(result).toHaveLength(1);
-    vt.debugSnapshot(toRel(result));
+    debugSnapshot(toRel(result));
   });
 });

@@ -1,5 +1,16 @@
 import { workspaceRoot as ACTUAL_WORKSPACE_ROOT } from '@nx/devkit';
 
+import {
+  afterEach,
+  beforeEach,
+  debugSnapshot,
+  describe,
+  expect,
+  test,
+  useSandbox,
+  vi,
+} from '@infra/testing';
+
 import * as cliUtilsMod from '../cli/utils';
 import type { PrismaOtsName } from '../types';
 import { startPrismaStudio } from './studio';
@@ -14,7 +25,7 @@ vi.mock('node:child_process', () => ({
 describe.unit('studio/studio.ts — startPrismaStudio (UNIT, spawn 전혀 안함)', () => {
   const FAKE_PRISMA_BIN = '/fake/workspace/node_modules/.bin/prisma';
   const FAKE_CONFIG = '/fake/project/prisma.config.ts';
-  // vt.useSandbox() 가 내부적으로 mkdirSync(sandboxRoot)를 호출하므로,
+  // useSandbox() 가 내부적으로 mkdirSync(sandboxRoot)를 호출하므로,
   // 가짜 CWD는 반드시 실제 존재하는 경로여야 한다.
   // 존재하지 않는 /fake/workspace 를 쓰면 EACCES 터짐.
   const FAKE_CWD = ACTUAL_WORKSPACE_ROOT;
@@ -80,7 +91,7 @@ describe.unit('studio/studio.ts — startPrismaStudio (UNIT, spawn 전혀 안함
   }
 
   beforeEach(() => {
-    vt.useSandbox().reset();
+    useSandbox().reset();
     mockSpawn.mockReset();
     const defaultChild = makeFakeChild();
     mockSpawn.mockReturnValue(defaultChild);
@@ -116,7 +127,7 @@ describe.unit('studio/studio.ts — startPrismaStudio (UNIT, spawn 전혀 안함
         '--browser',
         'none',
       ]);
-      vt.debugSnapshot({ args });
+      debugSnapshot({ args });
       expect((opts as any)?.detached).toBe(true);
       expect((opts as any)?.shell).toBe(false);
     });
@@ -126,14 +137,14 @@ describe.unit('studio/studio.ts — startPrismaStudio (UNIT, spawn 전혀 안함
       const args = mockSpawn.mock.calls[0]![1] as string[];
       expect(args.indexOf('--port')).toBeGreaterThan(-1);
       expect(args[args.indexOf('--port') + 1]).toBe('5555');
-      vt.debugSnapshot({ portArg: args[args.indexOf('--port') + 1] });
+      debugSnapshot({ portArg: args[args.indexOf('--port') + 1] });
     });
 
     test('GIVEN prismaBinPath WHEN called THEN resolvePrismaBin 호출되지 않고 해당 값 사용', () => {
       startPrismaStudio({ prismaConfigPath: FAKE_CONFIG, prismaBinPath: '/explicit/prisma-cli' });
       expect(resolveBinSpy).not.toHaveBeenCalled();
       expect(mockSpawn.mock.calls[0]![0]).toBe('/explicit/prisma-cli');
-      vt.debugSnapshot({ usedBin: mockSpawn.mock.calls[0]![0] });
+      debugSnapshot({ usedBin: mockSpawn.mock.calls[0]![0] });
     });
 
     test('GIVEN prismaBinPath 미제공 WHEN called THEN resolvePrismaBin(cwd) 가 실행됨', () => {
@@ -177,7 +188,7 @@ describe.unit('studio/studio.ts — startPrismaStudio (UNIT, spawn 전혀 안함
 
       const sameRef = (result as unknown) === child;
       expect(sameRef).toBe(true);
-      vt.debugSnapshot({
+      debugSnapshot({
         unrefCalls: child.unref.mock.calls.length,
         returnedSameRef: sameRef,
       });

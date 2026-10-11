@@ -3,15 +3,17 @@ import { relative, join } from 'node:path';
 import * as utils from './utils';
 import { PRISMA } from '../constants';
 import type { PrismaAction, PrismaOtsName } from '../types';
+import { afterAll, afterEach, beforeEach, debugSnapshot, describe, expect, test, useSandbox, vi } from '@infra/testing';
+
 
 describe.component('cli/utils module', () => {
   const OTS = 'main' as any as PrismaOtsName;
   const ACTION = 'generate' as PrismaAction;
 
-  let sb: ReturnType<typeof vt.useSandbox>;
+  let sb: ReturnType<typeof useSandbox>;
 
   beforeEach(() => {
-    sb = vt.useSandbox();
+    sb = useSandbox();
     sb.reset();
   });
 
@@ -56,7 +58,7 @@ describe.component('cli/utils module', () => {
       const result = utils.resolvePrismaBin(sb.resolve('proj'));
 
       expect(result).toBe(localBin);
-      vt.debugSnapshot({ resolved: relative(sb.root, result) });
+      debugSnapshot({ resolved: relative(sb.root, result) });
     });
 
     test('STAGE 2: GIVEN cwd-local missing BUT workspace root has prisma bin WHEN called THEN returns workspace-level path', () => {
@@ -70,7 +72,7 @@ describe.component('cli/utils module', () => {
       const result = utils.resolvePrismaBin(sb.resolve('proj-no-bin'));
 
       expect(result).toBe(wsBin);
-      vt.debugSnapshot({ resolved: relative(sb.root, result) });
+      debugSnapshot({ resolved: relative(sb.root, result) });
     });
 
     test('STAGE 3: GIVEN stages 1+2 miss WHEN called THEN returns process.cwd() level bin if present', () => {
@@ -81,7 +83,7 @@ describe.component('cli/utils module', () => {
 
       const result = utils.resolvePrismaBin(sb.resolve('proj-no-bin'));
       expect(result).toBe(procBin);
-      vt.debugSnapshot({ resolvedHead: result.slice(-64) });
+      debugSnapshot({ resolvedHead: result.slice(-64) });
     });
 
     test('STAGE 4: GIVEN stages 1~3 all miss (all resolved paths are synthetic non-existing dirs) WHEN called THEN eventually falls back to plain "prisma" string (global PATH lookup)', () => {
@@ -102,7 +104,7 @@ describe.component('cli/utils module', () => {
 
       expect(result).toBe('prisma');
       cwdSpy.mockRestore();
-      vt.debugSnapshot({ resolved: result });
+      debugSnapshot({ resolved: result });
     });
   });
 
@@ -113,39 +115,39 @@ describe.component('cli/utils module', () => {
     test('getPrismaSchemaDir → SSoT `${projectRoot}/src/prisma/${otsName}`', () => {
       const result = utils.getPrismaSchemaDir(OTS, sb.root);
       expect(result).toBe(sb.resolve(`src/prisma/${OTS}`));
-      vt.debugSnapshot({ rel: relative(sb.root, result) });
+      debugSnapshot({ rel: relative(sb.root, result) });
     });
 
     test('getPrismaConfigPath → `${projectRoot}/prisma.config.ts`', () => {
       const result = utils.getPrismaConfigPath(sb.root);
       expect(result).toBe(sb.resolve('prisma.config.ts'));
-      vt.debugSnapshot({ rel: relative(sb.root, result) });
+      debugSnapshot({ rel: relative(sb.root, result) });
     });
 
     test('getClientOutputDir 기본값 → `${projectRoot}/generated/prisma/${otsName}`', () => {
       const result = utils.getClientOutputDir(OTS, undefined, sb.root);
       expect(result).toBe(sb.resolve(`generated/prisma/${OTS}`));
-      vt.debugSnapshot({ rel: relative(sb.root, result) });
+      debugSnapshot({ rel: relative(sb.root, result) });
     });
 
     test('getClientOutputDir env override → projectRoot 기반 resolve', () => {
       const result = utils.getClientOutputDir(OTS, 'custom/out', sb.root);
       expect(result).toBe(sb.resolve('custom/out'));
-      vt.debugSnapshot({ rel: relative(sb.root, result) });
+      debugSnapshot({ rel: relative(sb.root, result) });
     });
 
     test('getManifestDir → PATH.CACHE.PRISMA + normalized projectRoot + otsName', () => {
       const result = utils.getManifestDir(OTS, sb.root);
       const normalized = sb.root.replace(/[^a-zA-Z0-9_-]/g, '_');
       expect(result.endsWith(`${normalized}/${OTS}`)).toBe(true);
-      vt.debugSnapshot({ tail: result.split('/').slice(-3).join('/') });
+      debugSnapshot({ tail: result.split('/').slice(-3).join('/') });
     });
 
     test('getManifestPath → `${getManifestDir()}/PRISMA.CACHE_MANIFEST_FILENAME`', () => {
       const result = utils.getManifestPath(OTS, sb.root);
       const expected = join(utils.getManifestDir(OTS, sb.root), PRISMA.CACHE_MANIFEST_FILENAME);
       expect(result).toBe(expected);
-      vt.debugSnapshot({
+      debugSnapshot({
         tail: [expected.split('/').at(-2), expected.split('/').at(-1)].join('/'),
       });
     });
@@ -161,7 +163,7 @@ describe.component('cli/utils module', () => {
         sb.writeFile(`client/${file}`, `content for ${file}`);
       }
       expect(utils.isOutputIntact(dir)).toBe(true);
-      vt.debugSnapshot({ intact: true });
+      debugSnapshot({ intact: true });
     });
 
     test('CASE missing: GIVEN one of 3 files is absent WHEN called THEN returns false', () => {
@@ -169,7 +171,7 @@ describe.component('cli/utils module', () => {
       sb.writeFile(`client/${PRISMA.OUTPUT_REQUIRED_FILES[0]}`, 'data');
       sb.writeFile(`client/${PRISMA.OUTPUT_REQUIRED_FILES[2]}`, 'data');
       expect(utils.isOutputIntact(dir)).toBe(false);
-      vt.debugSnapshot({ intact: false, reason: 'missing file' });
+      debugSnapshot({ intact: false, reason: 'missing file' });
     });
 
     test('CASE zero-size: GIVEN file exists but size=0 WHEN called THEN returns false', () => {
@@ -178,13 +180,13 @@ describe.component('cli/utils module', () => {
         sb.writeFile(`client/${file}`, file === PRISMA.OUTPUT_REQUIRED_FILES[1] ? '' : 'ok');
       }
       expect(utils.isOutputIntact(dir)).toBe(false);
-      vt.debugSnapshot({ intact: false, reason: 'zero-size index.d.ts' });
+      debugSnapshot({ intact: false, reason: 'zero-size index.d.ts' });
     });
 
     test('CASE dir does not exist: WHEN called THEN returns false (no throw)', () => {
       expect(() => utils.isOutputIntact(sb.resolve('no-such-dir'))).not.toThrow();
       expect(utils.isOutputIntact(sb.resolve('no-such-dir'))).toBe(false);
-      vt.debugSnapshot({ intact: false, reason: 'dir missing' });
+      debugSnapshot({ intact: false, reason: 'dir missing' });
     });
   });
 
@@ -205,7 +207,7 @@ describe.component('cli/utils module', () => {
       expect(env.DATABASE_TYPE).toBe('postgres');
       expect(env.OTS_NAME).toBe('main');
       expect(env.PRISMA_CLIENT_OUTPUT).toBe('out/prisma');
-      vt.debugSnapshot({ keys: Object.keys(env).sort() });
+      debugSnapshot({ keys: Object.keys(env).sort() });
     });
 
     test('WHEN PROJECT_NAME is provided THEN also included; otherwise absent', () => {
@@ -229,7 +231,7 @@ describe.component('cli/utils module', () => {
 
       expect(withProj.PROJECT_NAME).toBe('api');
       expect((withoutProj as any).PROJECT_NAME).toBeUndefined();
-      vt.debugSnapshot({
+      debugSnapshot({
         withProject: Object.keys(withProj).sort(),
         withoutProject: Object.keys(withoutProj).sort(),
       });
@@ -250,7 +252,7 @@ describe.component('cli/utils module', () => {
         clientOutputDir: '',
       };
       expect(() => utils.assertResultOk(result, 'generate')).not.toThrow();
-      vt.debugSnapshot({ asserted: true });
+      debugSnapshot({ asserted: true });
     });
 
     test('GIVEN exitCode!=0 WHEN called THEN throws Error with stderr attached + error.result field', () => {
@@ -275,7 +277,7 @@ describe.component('cli/utils module', () => {
       expect(err.message).toContain('exitCode=42');
       expect(err.message).toContain('Prisma schema parse error');
       expect(err.result).toBe(result);
-      vt.debugSnapshot({
+      debugSnapshot({
         exitCode: err?.result?.exitCode,
         msgHead: err?.message?.split('\n')[0],
       });
@@ -298,7 +300,7 @@ describe.component('cli/utils module', () => {
       }
       const err = caught as Error;
       expect(err.message).toContain('something went wrong on stdout');
-      vt.debugSnapshot({
+      debugSnapshot({
         usesStdout: !err.message.includes('stderr'),
         msgHead: err.message.split('\n')[0],
       });
@@ -324,7 +326,7 @@ describe.component('cli/utils module', () => {
       expect(ctx.schemaDir).toBe(sb.resolve(`src/prisma/${OTS}`));
       expect(ctx.prismaConfigPath).toBe(sb.resolve('prisma.config.ts'));
       expect(ctx.clientOutputDir).toBe(sb.resolve(`generated/prisma/${OTS}`));
-      vt.debugSnapshot({
+      debugSnapshot({
         schemaDir: relative(sb.root, ctx.schemaDir),
         prismaConfigPath: relative(sb.root, ctx.prismaConfigPath),
         clientOutputDir: relative(sb.root, ctx.clientOutputDir),
@@ -340,7 +342,7 @@ describe.component('cli/utils module', () => {
           sb.root,
         ),
       ).toThrow(/Schema directory not found/);
-      vt.debugSnapshot({ throws: true, reason: 'schema dir missing' });
+      debugSnapshot({ throws: true, reason: 'schema dir missing' });
     });
 
     test('CASE prisma.config.ts missing: throws with action prefix', () => {
@@ -352,7 +354,7 @@ describe.component('cli/utils module', () => {
           sb.root,
         ),
       ).toThrow(/prisma.config.ts not found/);
-      vt.debugSnapshot({ throws: true, reason: 'prisma.config.ts missing' });
+      debugSnapshot({ throws: true, reason: 'prisma.config.ts missing' });
     });
   });
 
@@ -423,7 +425,7 @@ describe.component('cli/utils module', () => {
       expect(result.removedPaths).toHaveLength(2);
       expect(sb.exists('generated/prisma/main/index.js')).toBe(true);
       expect(fs.existsSync(manifestPath)).toBe(true);
-      vt.debugSnapshot({
+      debugSnapshot({
         removedCount: result.removedPaths.length,
         errors: result.errors.length,
         fsUntouched: true,
@@ -444,7 +446,7 @@ describe.component('cli/utils module', () => {
       expect(result.removedPaths).toHaveLength(2);
       expect(sb.exists('generated/prisma/main')).toBe(false);
       expect(fs.existsSync(manifestPath)).toBe(false);
-      vt.debugSnapshot({
+      debugSnapshot({
         removedCount: result.removedPaths.length,
         errors: result.errors.length,
       });
@@ -463,7 +465,7 @@ describe.component('cli/utils module', () => {
       expect(fs.existsSync(manifestPath)).toBe(true);
       expect(sb.exists('generated/prisma/main')).toBe(false);
       expect(result.removedPaths).toEqual([clientDir]);
-      vt.debugSnapshot({
+      debugSnapshot({
         manifestKept: fs.existsSync(manifestPath),
         clientRemoved: !sb.exists('generated/prisma/main'),
         errors: result.errors.length,
@@ -511,7 +513,7 @@ describe.component('cli/utils module', () => {
       } catch {
         // noop
       }
-      vt.debugSnapshot({
+      debugSnapshot({
         permLockApplied: permLockOk,
         errors: result.errors.length,
       });
@@ -525,7 +527,7 @@ describe.component('cli/utils module', () => {
 
       expect(result.removedPaths).toEqual([]);
       expect(result.errors).toEqual([]);
-      vt.debugSnapshot({ removedCount: 0, errors: 0 });
+      debugSnapshot({ removedCount: 0, errors: 0 });
     });
   });
 });

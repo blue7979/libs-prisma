@@ -5,6 +5,8 @@ import { DOCKER } from '@infra/definitions';
 
 import { buildPrismaMongodbConnectionUrl, buildPrismaPostgresConnectionUrl } from './connection';
 import type { PrismaOtsName } from '../types';
+import { afterEach, beforeEach, debugSnapshot, describe, expect, test, vi } from '@infra/testing';
+
 
 describe.component('connection URL builders', () => {
   const PG_OTS = 'main' as any as PrismaOtsName<'postgres'>;
@@ -48,7 +50,7 @@ describe.component('connection URL builders', () => {
       expect(result).toContain(`${DOCKER.OTS.DATABASE.POSTGRES}-${PG_OTS}`);
       expect(result).toContain(':5432/');
       expect(result).not.toContain(':55432');
-      vt.debugSnapshot({ url: result });
+      debugSnapshot({ url: result });
     });
 
     test('GIVEN default run (not container, no flag) WHEN called THEN uses LOCAL_HOST constant and localPort from config', () => {
@@ -56,7 +58,7 @@ describe.component('connection URL builders', () => {
 
       expect(result).toContain(`@${DOCKER.CONTAINER.LOCAL_HOST}:`);
       expect(result).toContain(':55432/');
-      vt.debugSnapshot({ url: result });
+      debugSnapshot({ url: result });
     });
 
     test('GIVEN localPort is missing in config WHEN called THEN falls back to default internal postgres port', () => {
@@ -68,7 +70,7 @@ describe.component('connection URL builders', () => {
 
       const result = buildPrismaPostgresConnectionUrl(PG_OTS);
       expect(result).toContain(':5432/');
-      vt.debugSnapshot({ url: result });
+      debugSnapshot({ url: result });
     });
 
     test('GIVEN credentials with special chars WHEN called THEN user/pass are URI-encoded (RFC3986)', () => {
@@ -85,7 +87,7 @@ describe.component('connection URL builders', () => {
 
       expect(result).toContain('admin%40site');
       expect(result).toContain('p%40ss%3Aw%2Ford%20123');
-      vt.debugSnapshot({ url: result });
+      debugSnapshot({ url: result });
     });
 
     test('GIVEN process.platform=linux + /.dockerenv exists WHEN called THEN auto-detects container mode (statSync success)', () => {
@@ -101,7 +103,7 @@ describe.component('connection URL builders', () => {
       expect(result).toContain(`${DOCKER.OTS.DATABASE.POSTGRES}-${PG_OTS}`);
       expect(result).toContain(':5432/');
       Object.defineProperty(process, 'platform', { value: origPlatform, configurable: true });
-      vt.debugSnapshot({ url: result, platformDuringCall: 'linux' });
+      debugSnapshot({ url: result, platformDuringCall: 'linux' });
     });
 
     test('GIVEN darwin platform + /.dockerenv not present WHEN called THEN stays in local mode (platform short-circuit)', () => {
@@ -115,7 +117,7 @@ describe.component('connection URL builders', () => {
 
       expect(result).toContain(`@${DOCKER.CONTAINER.LOCAL_HOST}:`);
       Object.defineProperty(process, 'platform', { value: origPlatform, configurable: true });
-      vt.debugSnapshot({ url: result, platformDuringCall: 'darwin' });
+      debugSnapshot({ url: result, platformDuringCall: 'darwin' });
     });
   });
 
@@ -138,7 +140,7 @@ describe.component('connection URL builders', () => {
       expect(result).toContain(`${DOCKER.OTS.DATABASE.MONGODB}-${MONGO_OTS}`);
       expect(result).toContain(':27017/');
       expect(result).toContain('?authSource=admin');
-      vt.debugSnapshot({ url: result });
+      debugSnapshot({ url: result });
     });
 
     test('GIVEN default local mode WHEN called THEN uses LOCAL_HOST constant and localPort', () => {
@@ -147,7 +149,7 @@ describe.component('connection URL builders', () => {
       expect(result).toContain(`@${DOCKER.CONTAINER.LOCAL_HOST}:`);
       expect(result).toContain(':57017/');
       expect(result).toContain('?authSource=admin');
-      vt.debugSnapshot({ url: result });
+      debugSnapshot({ url: result });
     });
 
     test('GIVEN special chars in mongodb credentials WHEN called THEN applies URI encoding (encodeURIComponent: reserved chars encoded, unreserved like ! kept)', () => {
@@ -164,7 +166,7 @@ describe.component('connection URL builders', () => {
 
       expect(result).toContain('root%2Fuser');
       expect(result).toContain('pass%3Aword!%23');
-      vt.debugSnapshot({ url: result });
+      debugSnapshot({ url: result });
     });
   });
 });

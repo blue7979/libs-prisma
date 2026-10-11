@@ -11,11 +11,13 @@ import type {
   PipelineStageHookInfo,
   PrismaOtsName,
 } from '../types';
+import { afterEach, beforeEach, debugSnapshot, describe, expect, test, useSandbox, vi } from '@infra/testing';
+
 
 describe.unit('pipeline/pipeline.ts — runPrismaPipeline (UNIT, no real CLI/DB/Docker)', () => {
   const OTS_NAME = 'main' as any as PrismaOtsName;
 
-  let sb: ReturnType<typeof vt.useSandbox>;
+  let sb: ReturnType<typeof useSandbox>;
 
   // spies
   let resolvePrismaBinSpy: ReturnType<typeof vi.spyOn>;
@@ -57,7 +59,7 @@ describe.unit('pipeline/pipeline.ts — runPrismaPipeline (UNIT, no real CLI/DB/
   }
 
   beforeEach(() => {
-    sb = vt.useSandbox();
+    sb = useSandbox();
     sb.reset();
     sb.mkdir('src/prisma/main');
     sb.writeFile('prisma.config.ts', 'export default {};');
@@ -125,7 +127,7 @@ describe.unit('pipeline/pipeline.ts — runPrismaPipeline (UNIT, no real CLI/DB/
         await runPrismaPipeline(opts);
         expect(resolvePrismaBinSpy).toHaveBeenCalledWith(fakeWs);
         expect(validateSpy.mock.calls[0]?.[2]).toBe(fakeWs);
-        vt.debugSnapshot({ projectRootDefaulted: fakeWs.split('/').at(-1) });
+        debugSnapshot({ projectRootDefaulted: fakeWs.split('/').at(-1) });
       } finally {
         wsSpy.mockRestore();
       }
@@ -144,7 +146,7 @@ describe.unit('pipeline/pipeline.ts — runPrismaPipeline (UNIT, no real CLI/DB/
       expect(pushOpts.stdio).toBe(PRISMA.CLI_DEFAULT_STDIO);
       const studioOpts = studioSpy.mock.calls[0]?.[0] as any;
       expect(studioOpts?.studioPort).toBe(PRISMA.PIPELINE_DEFAULT_STUDIO_PORT);
-      vt.debugSnapshot({
+      debugSnapshot({
         stdio: pushOpts.stdio,
         studioPort: studioOpts?.studioPort,
       });
@@ -162,7 +164,7 @@ describe.unit('pipeline/pipeline.ts — runPrismaPipeline (UNIT, no real CLI/DB/
       expect(runSeedSpy).not.toHaveBeenCalled();
       expect(res.lastFailure?.failedStage).toBe('push');
       expect(res.lastFailure?.exitCode).toBe(-1);
-      vt.debugSnapshot({
+      debugSnapshot({
         ok: res.ok,
         totalAttempts: res.totalAttempts,
         reason: res.lastFailure?.reason,
@@ -186,7 +188,7 @@ describe.unit('pipeline/pipeline.ts — runPrismaPipeline (UNIT, no real CLI/DB/
       expect(pushSpy).not.toHaveBeenCalled();
       expect(runSeedSpy).not.toHaveBeenCalled();
       expect(studioSpy).not.toHaveBeenCalled();
-      vt.debugSnapshot({
+      debugSnapshot({
         cache: genOpts.cache,
         calls: {
           push: pushSpy.mock.calls.length,
@@ -213,7 +215,7 @@ describe.unit('pipeline/pipeline.ts — runPrismaPipeline (UNIT, no real CLI/DB/
       expect(res.lastFailure?.failedStage).toBe('generate');
       expect(res.lastFailure?.exitCode).toBe(1);
       expect(res.lastFailure?.reason).toBe('PUSH_DB_OR_SCHEMA_ERROR'); // exit!=0이고 stage=generate + intact=true로 분류
-      vt.debugSnapshot({
+      debugSnapshot({
         failedStage: res.lastFailure?.failedStage,
         reason: res.lastFailure?.reason,
       });
@@ -226,7 +228,7 @@ describe.unit('pipeline/pipeline.ts — runPrismaPipeline (UNIT, no real CLI/DB/
       expect(res.ok).toBe(false);
       expect(res.lastFailure?.failedStage).toBe('generate');
       expect(res.lastFailure?.reason).toBe('GENERATE_OUTPUT_CORRUPT');
-      vt.debugSnapshot({ reason: res.lastFailure?.reason });
+      debugSnapshot({ reason: res.lastFailure?.reason });
     });
 
     test('GIVEN action=generate AND onStage provided WHEN called THEN calls onStage exactly once for generate', async () => {
@@ -238,7 +240,7 @@ describe.unit('pipeline/pipeline.ts — runPrismaPipeline (UNIT, no real CLI/DB/
       expect(info.stage).toBe('generate');
       expect(info.attempt).toBe(0);
       expect(info.ok).toBe(true);
-      vt.debugSnapshot({ stage: info.stage, ok: info.ok });
+      debugSnapshot({ stage: info.stage, ok: info.ok });
     });
   });
 
@@ -260,7 +262,7 @@ describe.unit('pipeline/pipeline.ts — runPrismaPipeline (UNIT, no real CLI/DB/
       expect(pushOpts.acceptDataLoss).toBe(true);
       const genOpts = genSpy.mock.calls[0]![0] as any;
       expect(genOpts.cache).toBe(false);
-      vt.debugSnapshot({
+      debugSnapshot({
         forceReset: pushOpts.forceReset,
         cache: genOpts.cache,
         seedsRun: runSeedSpy.mock.calls.length,
@@ -277,7 +279,7 @@ describe.unit('pipeline/pipeline.ts — runPrismaPipeline (UNIT, no real CLI/DB/
       expect(studioOpts.studioPort).toBe(PRISMA.PIPELINE_DEFAULT_STUDIO_PORT);
       expect(studioOpts.prismaConfigPath).toBe(layout().prismaConfigPath);
       expect(studioOpts.otsName).toBe(OTS_NAME);
-      vt.debugSnapshot({ studioStarted: res.studioStarted, port: studioOpts.studioPort });
+      debugSnapshot({ studioStarted: res.studioStarted, port: studioOpts.studioPort });
     });
 
     test('GIVEN action=generate WHEN success THEN studio is NEVER started', async () => {
@@ -285,7 +287,7 @@ describe.unit('pipeline/pipeline.ts — runPrismaPipeline (UNIT, no real CLI/DB/
       const res = await runPrismaPipeline(opts);
       expect(res.studioStarted).toBe(false);
       expect(studioSpy).not.toHaveBeenCalled();
-      vt.debugSnapshot({ studioStarted: res.studioStarted });
+      debugSnapshot({ studioStarted: res.studioStarted });
     });
 
     test('GIVEN seedExists=false WHEN seed stage THEN runPrismaSeed NOT called but onStage seed called with ok=true', async () => {
@@ -300,7 +302,7 @@ describe.unit('pipeline/pipeline.ts — runPrismaPipeline (UNIT, no real CLI/DB/
       )?.[0] as PipelineStageHookInfo;
       expect(seedHook?.ok).toBe(true);
       expect(seedHook?.exitCode).toBe(0);
-      vt.debugSnapshot({
+      debugSnapshot({
         seedHookOk: seedHook?.ok,
         runSeedCalledTimes: runSeedSpy.mock.calls.length,
       });
@@ -314,7 +316,7 @@ describe.unit('pipeline/pipeline.ts — runPrismaPipeline (UNIT, no real CLI/DB/
       const seedOpts = runSeedSpy.mock.calls[0]![0] as any;
       expect(seedOpts.env.TARGET).toBe(OTS_NAME);
       expect(seedOpts.env.ACTION).toBe('setup');
-      vt.debugSnapshot({ TARGET: seedOpts.env.TARGET, ACTION: seedOpts.env.ACTION });
+      debugSnapshot({ TARGET: seedOpts.env.TARGET, ACTION: seedOpts.env.ACTION });
     });
 
     test('GIVEN env.TARGET already overridden WHEN seed THEN runPrismaSeed uses explicit TARGET (no override with OTS)', async () => {
@@ -325,7 +327,7 @@ describe.unit('pipeline/pipeline.ts — runPrismaPipeline (UNIT, no real CLI/DB/
       const seedOpts = runSeedSpy.mock.calls[0]?.[0] as any;
       expect(seedOpts.env.TARGET).toBe('custom-target');
       expect(seedOpts.env.ACTION).toBe('my-action');
-      vt.debugSnapshot({ TARGET: seedOpts.env.TARGET, ACTION: seedOpts.env.ACTION });
+      debugSnapshot({ TARGET: seedOpts.env.TARGET, ACTION: seedOpts.env.ACTION });
     });
 
     test('GIVEN custom studioPort WHEN setup/start success THEN studio uses custom port', async () => {
@@ -335,7 +337,7 @@ describe.unit('pipeline/pipeline.ts — runPrismaPipeline (UNIT, no real CLI/DB/
       expect(res.studioStarted).toBe(true);
       const studioOpts = studioSpy.mock.calls[0]?.[0] as any;
       expect(studioOpts?.studioPort).toBe(5555);
-      vt.debugSnapshot({ studioPort: studioOpts?.studioPort });
+      debugSnapshot({ studioPort: studioOpts?.studioPort });
     });
   });
 
@@ -369,7 +371,7 @@ describe.unit('pipeline/pipeline.ts — runPrismaPipeline (UNIT, no real CLI/DB/
       // remaining = maxRetry - attempt - 1 (attempt는 onRetry 호출 시점의 for 루프 카운터 = 0번째 시도 실패 직후라 0)
       //            = 3 - 0 - 1 = 2
       expect(firstRetryInfo.remaining).toBe(2);
-      vt.debugSnapshot({
+      debugSnapshot({
         reason: firstRetryInfo.reason,
         total: res.totalAttempts,
         retryCalls: onRetry.mock.calls.length,
@@ -390,7 +392,7 @@ describe.unit('pipeline/pipeline.ts — runPrismaPipeline (UNIT, no real CLI/DB/
       await runPrismaPipeline(opts);
       const info = onRetry.mock.calls[0]?.[0] as PipelineRetryHookInfo;
       expect(info?.reason).toBe('PUSH_DB_OR_SCHEMA_ERROR');
-      vt.debugSnapshot({ reason: info?.reason, exitCode: info?.exitCode });
+      debugSnapshot({ reason: info?.reason, exitCode: info?.exitCode });
     });
 
     test('GIVEN push success BUT generate exit!=0 WHEN called THEN fails at generate + reason', async () => {
@@ -421,7 +423,7 @@ describe.unit('pipeline/pipeline.ts — runPrismaPipeline (UNIT, no real CLI/DB/
       expect(res.ok).toBe(false);
       expect(res.lastFailure?.failedStage).toBe('generate');
       expect(res.lastFailure?.reason).toBe('PUSH_DB_OR_SCHEMA_ERROR');
-      vt.debugSnapshot({
+      debugSnapshot({
         failedStage: res.lastFailure?.failedStage,
         reason: res.lastFailure?.reason,
       });
@@ -435,7 +437,7 @@ describe.unit('pipeline/pipeline.ts — runPrismaPipeline (UNIT, no real CLI/DB/
       const info = onRetry.mock.calls[0]?.[0] as PipelineRetryHookInfo;
       expect(info?.reason).toBe('GENERATE_OUTPUT_CORRUPT');
       expect(info?.failedStage).toBe('generate');
-      vt.debugSnapshot({ reason: info?.reason });
+      debugSnapshot({ reason: info?.reason });
     });
 
     test('GIVEN push+generate success BUT seed fails WHEN called THEN reason=SEED_SCRIPT_FAILED', async () => {
@@ -446,7 +448,7 @@ describe.unit('pipeline/pipeline.ts — runPrismaPipeline (UNIT, no real CLI/DB/
       const res = await runPrismaPipeline(opts);
       expect(res.lastFailure?.failedStage).toBe('seed');
       expect(res.lastFailure?.reason).toBe('SEED_SCRIPT_FAILED');
-      vt.debugSnapshot({
+      debugSnapshot({
         failedStage: res.lastFailure?.failedStage,
         reason: res.lastFailure?.reason,
       });
@@ -471,7 +473,7 @@ describe.unit('pipeline/pipeline.ts — runPrismaPipeline (UNIT, no real CLI/DB/
       const pushOptsAttempt1 = pushSpy.mock.calls[1]?.[0] as any;
       expect(pushOptsAttempt1?.forceReset).toBe(false);
       expect(pushOptsAttempt1?.acceptDataLoss).toBeFalsy();
-      vt.debugSnapshot({
+      debugSnapshot({
         genCalled: genSpy.mock.calls.length,
         pushCalled: pushSpy.mock.calls.length,
         seedCalled: runSeedSpy.mock.calls.length,
@@ -491,7 +493,7 @@ describe.unit('pipeline/pipeline.ts — runPrismaPipeline (UNIT, no real CLI/DB/
       expect(onStage).toHaveBeenCalledTimes(3); // push, generate, seed
       const stages = onStage.mock.calls.map((c: any[]) => (c[0] as PipelineStageHookInfo).stage);
       expect(stages).toEqual(['push', 'generate', 'seed']);
-      vt.debugSnapshot({ stages });
+      debugSnapshot({ stages });
     });
 
     test('GIVEN onRetry provided WHEN called THEN onRetry called before wait, suggestedDelayMs = retryDelayMs option', async () => {
@@ -518,7 +520,7 @@ describe.unit('pipeline/pipeline.ts — runPrismaPipeline (UNIT, no real CLI/DB/
       expect(info?.suggestedDelayMs).toBe(1);
       // NOTE: vi.spyOn(node:timers/promises setTimeout)는 ESM named import binding 탓에 UNIT 수준에서 정확한
       // call order/count를 잡지 못하는 환경이 존재 → waitSpy 호출 횟수 대신 onRetry hook의 suggestedDelayMs 전달 정확성만 검증
-      vt.debugSnapshot({ delay: info?.suggestedDelayMs });
+      debugSnapshot({ delay: info?.suggestedDelayMs });
     });
 
     test('GIVEN onRetry absent WHEN called THEN fallback console.warn/error emitted for every reason case', async () => {
@@ -561,7 +563,7 @@ describe.unit('pipeline/pipeline.ts — runPrismaPipeline (UNIT, no real CLI/DB/
       expect(warnSpy).toHaveBeenCalled(); // 나머지 케이스 — console.warn
       errSpy.mockRestore();
       warnSpy.mockRestore();
-      vt.debugSnapshot({
+      debugSnapshot({
         errorCalled: errSpy.mock.calls.length > 0,
         warnCalled: warnSpy.mock.calls.length > 0,
       });
@@ -583,7 +585,7 @@ describe.unit('pipeline/pipeline.ts — runPrismaPipeline (UNIT, no real CLI/DB/
         expect(res.ok).toBe(true);
         expect(res.studioStarted).toBe(false);
         expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('port 3000 already in use'));
-        vt.debugSnapshot({ studioStarted: res.studioStarted, pipelineOk: res.ok });
+        debugSnapshot({ studioStarted: res.studioStarted, pipelineOk: res.ok });
       } finally {
         warnSpy.mockRestore();
       }
@@ -606,7 +608,7 @@ describe.unit('pipeline/pipeline.ts — runPrismaPipeline (UNIT, no real CLI/DB/
       const genOpt = genSpy.mock.calls[0]?.[0] as any;
       expect(pushOpt?.prismaBinPath).toBe(fake);
       expect(genOpt?.prismaBinPath).toBe(fake);
-      vt.debugSnapshot({ bin: fake.split('/').at(-1) });
+      debugSnapshot({ bin: fake.split('/').at(-1) });
     });
   });
 });

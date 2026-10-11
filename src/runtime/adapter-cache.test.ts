@@ -2,12 +2,14 @@ import * as connMod from '../connection';
 import type { PrismaDatabaseType, PrismaOtsName } from '../types';
 import { getOrCreateAdapter } from './adapter-cache';
 import type { AdapterFactory } from './types';
+import { afterEach, beforeEach, debugSnapshot, describe, expect, test, useSandbox, vi } from '@infra/testing';
+
 
 describe.unit('runtime/adapter-cache.ts — getOrCreateAdapter (UNIT, cache isolation)', () => {
   const PG_OTS = 'main' as any as PrismaOtsName<'postgres'>;
   const MONGO_OTS = 'logs-mongo' as any as PrismaOtsName<'mongodb'>;
 
-  let sb: ReturnType<typeof vt.useSandbox>;
+  let sb: ReturnType<typeof useSandbox>;
   let pgUrlSpy: ReturnType<typeof vi.spyOn>;
   let mongoUrlSpy: ReturnType<typeof vi.spyOn>;
 
@@ -16,7 +18,7 @@ describe.unit('runtime/adapter-cache.ts — getOrCreateAdapter (UNIT, cache isol
   }
 
   beforeEach(() => {
-    sb = vt.useSandbox();
+    sb = useSandbox();
     sb.reset();
 
     // ADAPTER_INSTANCE_CACHE는 모듈 스코프 Map이므로, 매 테스트 초기화를 위해
@@ -47,7 +49,7 @@ describe.unit('runtime/adapter-cache.ts — getOrCreateAdapter (UNIT, cache isol
       expect(pgUrlSpy).toHaveBeenCalledTimes(1);
       expect(pgUrlSpy.mock.calls[0]?.[0]).toBe(uniquePgName);
       expect(mongoUrlSpy).not.toHaveBeenCalled();
-      vt.debugSnapshot({ url: pgUrlSpy.mock.calls[0]?.[1] });
+      debugSnapshot({ url: pgUrlSpy.mock.calls[0]?.[1] });
     });
 
     test('GIVEN dbType=mongodb WHEN called THEN uses buildPrismaMongodbConnectionUrl', () => {
@@ -59,7 +61,7 @@ describe.unit('runtime/adapter-cache.ts — getOrCreateAdapter (UNIT, cache isol
       expect(mongoUrlSpy).toHaveBeenCalledTimes(1);
       expect(mongoUrlSpy.mock.calls[0]?.[0]).toBe(mongoUnique);
       expect(pgUrlSpy).not.toHaveBeenCalled();
-      vt.debugSnapshot({ mongoOpts: mongoUrlSpy.mock.calls[0]?.[1] });
+      debugSnapshot({ mongoOpts: mongoUrlSpy.mock.calls[0]?.[1] });
     });
 
     test('GIVEN forceContainerFormat=true WHEN called THEN passes flag as second argument to URL builder', () => {
@@ -69,7 +71,7 @@ describe.unit('runtime/adapter-cache.ts — getOrCreateAdapter (UNIT, cache isol
         forceContainerFormat: true,
       });
       expect(pgUrlSpy).toHaveBeenCalledWith(uniqueName, { forceContainerFormat: true });
-      vt.debugSnapshot({ passedOpts: pgUrlSpy.mock.calls[0]?.[1] });
+      debugSnapshot({ passedOpts: pgUrlSpy.mock.calls[0]?.[1] });
     });
 
     test('GIVEN opts undefined WHEN called THEN forceContainerFormat defaults to false', () => {
@@ -77,7 +79,7 @@ describe.unit('runtime/adapter-cache.ts — getOrCreateAdapter (UNIT, cache isol
       const uniqueName = ('noopts-' + Math.random().toString(36).slice(2, 8)) as any;
       getOrCreateAdapter('postgres' as PrismaDatabaseType, uniqueName, factory as any);
       expect(pgUrlSpy).toHaveBeenCalledWith(uniqueName, { forceContainerFormat: false });
-      vt.debugSnapshot({ defaultOpts: pgUrlSpy.mock.calls[0]?.[1] });
+      debugSnapshot({ defaultOpts: pgUrlSpy.mock.calls[0]?.[1] });
     });
 
     test('GIVEN url builder가 만든 connection string WHEN factory 호출 THEN 정확히 factory에 전달', () => {
@@ -95,7 +97,7 @@ describe.unit('runtime/adapter-cache.ts — getOrCreateAdapter (UNIT, cache isol
         adapter: true,
         url: 'prisma+postgres://user:pass@host:5432/db',
       });
-      vt.debugSnapshot({ factoryCalledWith: factory.mock.calls[0]?.[0] });
+      debugSnapshot({ factoryCalledWith: factory.mock.calls[0]?.[0] });
     });
   });
 
@@ -110,7 +112,7 @@ describe.unit('runtime/adapter-cache.ts — getOrCreateAdapter (UNIT, cache isol
       const r2 = getOrCreateAdapter('postgres' as PrismaDatabaseType, uniqueName, factory as any);
       expect(factory as any).toHaveBeenCalledTimes(1);
       expect(r1).toBe(r2); // 참조 동일
-      vt.debugSnapshot({
+      debugSnapshot({
         calls: (factory as any).mock.calls.length,
         sameReference: r1 === r2,
       });
@@ -134,7 +136,7 @@ describe.unit('runtime/adapter-cache.ts — getOrCreateAdapter (UNIT, cache isol
       expect(pgFactory as any).toHaveBeenCalledTimes(1);
       expect(mongoFactory as any).toHaveBeenCalledTimes(1);
       expect(r1).not.toBe(r2);
-      vt.debugSnapshot({
+      debugSnapshot({
         pgCalls: (pgFactory as any).mock.calls.length,
         mongoCalls: (mongoFactory as any).mock.calls.length,
         diff: r1 !== r2,
@@ -150,7 +152,7 @@ describe.unit('runtime/adapter-cache.ts — getOrCreateAdapter (UNIT, cache isol
       expect(f1 as any).toHaveBeenCalledTimes(1);
       expect(f2 as any).not.toHaveBeenCalled(); // ❗ 캐시 HIT → 두 번째 factory는 아예 실행 안됨
       expect(r1).toBe(r2);
-      vt.debugSnapshot({
+      debugSnapshot({
         f1Calls: (f1 as any).mock.calls.length,
         f2Calls: (f2 as any).mock.calls.length,
       });
@@ -169,7 +171,7 @@ describe.unit('runtime/adapter-cache.ts — getOrCreateAdapter (UNIT, cache isol
       expect(pgUrlSpy).toHaveBeenCalledExactlyOnceWith(specificOts, {
         forceContainerFormat: false,
       });
-      vt.debugSnapshot({
+      debugSnapshot({
         firstArg: pgUrlSpy.mock.calls[0]?.[0],
       });
     });

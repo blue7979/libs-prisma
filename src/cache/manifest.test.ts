@@ -4,16 +4,18 @@ import * as cliUtils from '../cli/utils';
 import { PRISMA } from '../constants';
 import { collectSchemaFiles, isSchemaCached, writeManifest, withSchemaCache } from './manifest';
 import type { PrismaOtsName } from '../types';
+import { afterEach, beforeEach, debugSnapshot, describe, expect, test, useSandbox, vi } from '@infra/testing';
+
 
 describe.component('manifest cache module', () => {
   const OTS = 'test-ots' as any as PrismaOtsName;
 
-  let sb: ReturnType<typeof vt.useSandbox>;
+  let sb: ReturnType<typeof useSandbox>;
   let isOutputIntactSpy: ReturnType<typeof vi.spyOn>;
   let getManifestPathSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    sb = vt.useSandbox();
+    sb = useSandbox();
     sb.reset();
 
     isOutputIntactSpy = vi.spyOn(cliUtils, 'isOutputIntact');
@@ -45,13 +47,13 @@ describe.component('manifest cache module', () => {
         expect(out[k].size).toBe(st!.size);
         expect(out[k].mtimeMs).toBe(st!.mtimeMs);
       }
-      vt.debugSnapshot(Object.keys(out));
+      debugSnapshot(Object.keys(out));
     });
 
     test('GIVEN empty schema dir WHEN called THEN returns empty object (no crash)', () => {
       const out = collectSchemaFiles(sb.root);
       expect(out).toEqual({});
-      vt.debugSnapshot(out);
+      debugSnapshot(out);
     });
   });
 
@@ -73,7 +75,7 @@ describe.component('manifest cache module', () => {
       expect(parsed.schemaDir).toBe(sb.root);
       expect(parsed.generatedAt).toEqual(expect.any(String));
       expect(Object.keys(parsed.schemaFiles)).toEqual(['schema.prisma']);
-      vt.debugSnapshot({ version: parsed.version, schemaKeys: Object.keys(parsed.schemaFiles) });
+      debugSnapshot({ version: parsed.version, schemaKeys: Object.keys(parsed.schemaFiles) });
     });
 
     test('GIVEN manifest dir does not exist WHEN writeManifest THEN mkdirs parent dirs (recursive mkdir)', () => {
@@ -84,7 +86,7 @@ describe.component('manifest cache module', () => {
 
       expect(() => writeManifest(OTS, sb.root, sb.root)).not.toThrow();
       expect(sb.exists(`deeply/nested/${manifestFilename}`)).toBe(true);
-      vt.debugSnapshot({
+      debugSnapshot({
         manifestCreated: true,
         expectedPath: `deeply/nested/${manifestFilename}`,
       });
@@ -108,14 +110,14 @@ describe.component('manifest cache module', () => {
 
       const result = isSchemaCached(OTS, sb.root, sb.root, sb.root);
       expect(result).toBe(false);
-      vt.debugSnapshot(result);
+      debugSnapshot(result);
     });
 
     test('CASE 2: GIVEN output intact but no manifest file exists THEN returns false', () => {
       isOutputIntactSpy.mockReturnValue(true);
       const result = isSchemaCached(OTS, sb.root, sb.root, sb.root);
       expect(result).toBe(false);
-      vt.debugSnapshot(result);
+      debugSnapshot(result);
     });
 
     test('CASE 3: GIVEN manifest has wrong version THEN returns false', () => {
@@ -128,7 +130,7 @@ describe.component('manifest cache module', () => {
 
       const result = isSchemaCached(OTS, sb.root, sb.root, sb.root);
       expect(result).toBe(false);
-      vt.debugSnapshot(result);
+      debugSnapshot(result);
     });
 
     test('CASE 4: GIVEN schema files fingerprint changed (mtime/size) THEN returns false', () => {
@@ -137,7 +139,7 @@ describe.component('manifest cache module', () => {
 
       const result = isSchemaCached(OTS, sb.root, sb.root, sb.root);
       expect(result).toBe(false);
-      vt.debugSnapshot(result);
+      debugSnapshot(result);
     });
 
     test('CASE 5: GIVEN a new schema file was added AND manifest is stale THEN returns false', () => {
@@ -146,7 +148,7 @@ describe.component('manifest cache module', () => {
 
       const result = isSchemaCached(OTS, sb.root, sb.root, sb.root);
       expect(result).toBe(false);
-      vt.debugSnapshot(result);
+      debugSnapshot(result);
     });
 
     test('CASE 6 (HAPPY): GIVEN output intact + correct version + fingerprints all match THEN returns true (cache HIT)', () => {
@@ -154,7 +156,7 @@ describe.component('manifest cache module', () => {
 
       const result = isSchemaCached(OTS, sb.root, sb.root, sb.root);
       expect(result).toBe(true);
-      vt.debugSnapshot(result);
+      debugSnapshot(result);
     });
   });
 
@@ -186,7 +188,7 @@ describe.component('manifest cache module', () => {
       expect(result.result.cacheHit).toBe(true);
       expect(result.result.exitCode).toBe(0);
       expect(result.result.stdout).toContain('cache hit');
-      vt.debugSnapshot({ hit: result.hit, exitCode: result.result.exitCode });
+      debugSnapshot({ hit: result.hit, exitCode: result.result.exitCode });
     });
 
     test('GIVEN useCache=false THEN heavyWork is ALWAYS called even if cache would hit (cache bypass)', async () => {
@@ -209,7 +211,7 @@ describe.component('manifest cache module', () => {
       );
 
       expect(heavy).toHaveBeenCalledTimes(1);
-      vt.debugSnapshot({ heavyCallCount: heavy.mock.calls.length });
+      debugSnapshot({ heavyCallCount: heavy.mock.calls.length });
     });
 
     test('GIVEN cache miss AND heavyWork exits 0 THEN manifest is written with NEW fingerprints', async () => {
@@ -236,7 +238,7 @@ describe.component('manifest cache module', () => {
       expect(heavy).toHaveBeenCalledTimes(1);
       const afterCount = sb.list('.').length;
       expect(afterCount).toBeGreaterThan(beforeCount);
-      vt.debugSnapshot({ hit: res.hit, filesBefore: beforeCount, filesAfter: afterCount });
+      debugSnapshot({ hit: res.hit, filesBefore: beforeCount, filesAfter: afterCount });
     });
 
     test('GIVEN heavyWork returns non-zero exit THEN manifest is NOT persisted (no false positive on next run)', async () => {
@@ -262,7 +264,7 @@ describe.component('manifest cache module', () => {
       const after = sb.list('.').length;
 
       expect(after).toEqual(before);
-      vt.debugSnapshot({ filesChanged: before !== after });
+      debugSnapshot({ filesChanged: before !== after });
     });
 
     test('GIVEN heavyWork ctx THEN receives resolved {schemaDir, clientOutputDir} from params', async () => {
@@ -286,7 +288,7 @@ describe.component('manifest cache module', () => {
         clientOutputDir: sb.root,
       });
       const rawCtx = heavy.mock.calls[0]?.[0];
-      vt.debugSnapshot({
+      debugSnapshot({
         schemaDir: rawCtx?.schemaDir ? relative(sb.root, rawCtx.schemaDir) : '',
         clientOutputDir: rawCtx?.clientOutputDir ? relative(sb.root, rawCtx.clientOutputDir) : '',
       });

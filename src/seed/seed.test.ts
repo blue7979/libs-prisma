@@ -3,6 +3,8 @@ import * as nodePath from 'node:path';
 import { PRISMA } from '../constants';
 import type { PrismaEnv, PrismaOtsName } from '../types';
 import { runPrismaSeed, seedExists, assertSeedResultOk } from './seed';
+import { afterEach, beforeEach, debugSnapshot, describe, expect, test, useSandbox, vi } from '@infra/testing';
+
 
 // 🚨 seed.ts 는 `import { spawn } from 'node:child_process'` named import 로 spawn을
 // 직접 가져다 쓴다. ESM named import 바인딩은 런타임에 재할당 불가하므로
@@ -129,7 +131,7 @@ describe.unit(
     }
 
     beforeEach(() => {
-      vt.useSandbox().reset();
+      useSandbox().reset();
       mockSpawn.mockReset();
       mockExistsSync.mockReset();
       existsSpyRef = mockExistsSync;
@@ -306,7 +308,7 @@ describe.unit(
         expect(res.exitCode).toBe(0);
         expect(res.stdout).toBe('seed record 1 inserted\nseed record 2 inserted\n');
         expect(res.stderr).toBe('warning: index skipped\n');
-        vt.debugSnapshot({
+        debugSnapshot({
           exitCode: res.exitCode,
           stdoutLen: res.stdout.length,
           stderrLen: res.stderr.length,
@@ -326,7 +328,7 @@ describe.unit(
         expect(res.stdout).toBe('stdout-before-crash\n');
         expect(res.stderr).toContain('[spawn error] npx vite-node: spawn npx ENOENT');
         expect(res.stderr).toContain('Error: spawn npx ENOENT');
-        vt.debugSnapshot({ exitCode: res.exitCode, errPrefix: res.stderr.slice(0, 50) });
+        debugSnapshot({ exitCode: res.exitCode, errPrefix: res.stderr.slice(0, 50) });
       });
 
       test('GIVEN close code=null (signal kill) WHEN resolve THEN exitCode fallback 0', async () => {

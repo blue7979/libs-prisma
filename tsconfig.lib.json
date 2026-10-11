@@ -2,6 +2,9 @@
   "extends": "../infra/kits/src/presets/tsconfig/tsconfig.ts-libs.json",
   "references": [
     {
+      "path": "../infra/testing/tsconfig.lib.json"
+    },
+    {
       "path": "../infra/utils/tsconfig.lib.json"
     },
     {

@@ -3,11 +3,13 @@ import { relative } from 'node:path';
 import { pushPrismaSchema } from './push';
 import * as cliUtils from './utils';
 import type { PrismaAction, PrismaCliResult, PrismaOtsName, PushOptions } from '../types';
+import { afterEach, beforeEach, debugSnapshot, describe, expect, test, useSandbox, vi } from '@infra/testing';
+
 
 describe.unit('cli/push.ts — pushPrismaSchema (UNIT, no real CLI/DB)', () => {
   const OTS_NAME = 'main' as any as PrismaOtsName;
 
-  let sb: ReturnType<typeof vt.useSandbox>;
+  let sb: ReturnType<typeof useSandbox>;
 
   let resolvePrismaBinSpy: ReturnType<typeof vi.spyOn>;
   let validateSpy: ReturnType<typeof vi.spyOn>;
@@ -35,7 +37,7 @@ describe.unit('cli/push.ts — pushPrismaSchema (UNIT, no real CLI/DB)', () => {
   }
 
   beforeEach(() => {
-    sb = vt.useSandbox();
+    sb = useSandbox();
     sb.reset();
 
     // Warm sandbox so any accidental real existsSync doesn't bail oddly
@@ -84,7 +86,7 @@ describe.unit('cli/push.ts — pushPrismaSchema (UNIT, no real CLI/DB)', () => {
       'db push',
       root,
     );
-    vt.debugSnapshot({ projectRoot: relative(sb.root, root) });
+    debugSnapshot({ projectRoot: relative(sb.root, root) });
   });
 
   // ---------------------------------------------------------------------------
@@ -103,7 +105,7 @@ describe.unit('cli/push.ts — pushPrismaSchema (UNIT, no real CLI/DB)', () => {
     expect(cwd).toBe(opts.projectRoot);
     expect(env).toEqual({ DATABASE_TYPE: 'postgres', OTS_NAME: 'main', PRISMA_CLIENT_OUTPUT: '' });
     expect(stdio).toBeUndefined();
-    vt.debugSnapshot({ args });
+    debugSnapshot({ args });
   });
 
   // ---------------------------------------------------------------------------
@@ -125,7 +127,7 @@ describe.unit('cli/push.ts — pushPrismaSchema (UNIT, no real CLI/DB)', () => {
     const allArgs = runCliSpy.mock.calls.flatMap((call) => call[1] as string[]);
     expect(allArgs).not.toContain('--skip-generate');
     expect(allArgs).not.toContain('skip-generate');
-    vt.debugSnapshot({ calls: runCliSpy.mock.calls.length, allArgsCount: allArgs.length });
+    debugSnapshot({ calls: runCliSpy.mock.calls.length, allArgsCount: allArgs.length });
   });
 
   // ---------------------------------------------------------------------------
@@ -136,7 +138,7 @@ describe.unit('cli/push.ts — pushPrismaSchema (UNIT, no real CLI/DB)', () => {
 
     const [, args] = runCliSpy.mock.calls[0]!;
     expect(args).toContain('--force-reset');
-    vt.debugSnapshot({ args });
+    debugSnapshot({ args });
   });
 
   // ---------------------------------------------------------------------------
@@ -148,7 +150,7 @@ describe.unit('cli/push.ts — pushPrismaSchema (UNIT, no real CLI/DB)', () => {
     const [, args] = runCliSpy.mock.calls[0]!;
     expect(args).toContain('--accept-data-loss');
     expect(args).not.toContain('--force-reset');
-    vt.debugSnapshot({ args });
+    debugSnapshot({ args });
   });
 
   // ---------------------------------------------------------------------------
@@ -162,7 +164,7 @@ describe.unit('cli/push.ts — pushPrismaSchema (UNIT, no real CLI/DB)', () => {
     expect(args).toContain('--accept-data-loss');
     // order: forceReset 이 acceptDataLoss 보다 먼저 push 되므로 인덱스 순서 유지
     expect(args.indexOf('--force-reset')).toBeLessThan(args.indexOf('--accept-data-loss'));
-    vt.debugSnapshot({ args });
+    debugSnapshot({ args });
   });
 
   // ---------------------------------------------------------------------------
@@ -176,7 +178,7 @@ describe.unit('cli/push.ts — pushPrismaSchema (UNIT, no real CLI/DB)', () => {
     const urlIdx = args.indexOf('--url');
     expect(urlIdx).toBeGreaterThan(-1);
     expect((args as string[])[urlIdx + 1]).toBe(url);
-    vt.debugSnapshot({ args, urlIdx });
+    debugSnapshot({ args, urlIdx });
   });
 
   // ---------------------------------------------------------------------------
@@ -203,7 +205,7 @@ describe.unit('cli/push.ts — pushPrismaSchema (UNIT, no real CLI/DB)', () => {
       '--url',
       url,
     ]);
-    vt.debugSnapshot({ args });
+    debugSnapshot({ args });
   });
 
   // ---------------------------------------------------------------------------
@@ -214,7 +216,7 @@ describe.unit('cli/push.ts — pushPrismaSchema (UNIT, no real CLI/DB)', () => {
 
     const call = runCliSpy.mock.calls[0]!;
     expect(call[4]).toBe('inherit');
-    vt.debugSnapshot({ stdio: call[4] });
+    debugSnapshot({ stdio: call[4] });
   });
 
   test('GIVEN no stdio WHEN called THEN runPrismaCli receives undefined (falls back to utils default "pipe")', async () => {
@@ -222,7 +224,7 @@ describe.unit('cli/push.ts — pushPrismaSchema (UNIT, no real CLI/DB)', () => {
 
     const call = runCliSpy.mock.calls[0]!;
     expect(call[4]).toBeUndefined();
-    vt.debugSnapshot({ stdio: call[4] ?? 'default-pipe' });
+    debugSnapshot({ stdio: call[4] ?? 'default-pipe' });
   });
 
   // ---------------------------------------------------------------------------
@@ -235,7 +237,7 @@ describe.unit('cli/push.ts — pushPrismaSchema (UNIT, no real CLI/DB)', () => {
     await pushPrismaSchema(opts);
 
     expect(buildEnvSpy).toHaveBeenCalledWith(opts);
-    vt.debugSnapshot({ buildEnvCalled: buildEnvSpy.mock.calls.length });
+    debugSnapshot({ buildEnvCalled: buildEnvSpy.mock.calls.length });
   });
 
   // ---------------------------------------------------------------------------
@@ -261,7 +263,7 @@ describe.unit('cli/push.ts — pushPrismaSchema (UNIT, no real CLI/DB)', () => {
     expect(Object.keys(result).sort()).toEqual(
       ['schemaDir', 'prismaConfigPath', 'clientOutputDir', 'exitCode', 'stdout', 'stderr'].sort(),
     );
-    vt.debugSnapshot({ keys: Object.keys(result).sort() });
+    debugSnapshot({ keys: Object.keys(result).sort() });
   });
 
   // ---------------------------------------------------------------------------
@@ -294,7 +296,7 @@ describe.unit('cli/push.ts — pushPrismaSchema (UNIT, no real CLI/DB)', () => {
       /Prisma db push failed \(exitCode=42\)/,
     );
     await expect(pushPrismaSchema(baseOpts())).rejects.toThrow('table drop detected');
-    vt.debugSnapshot({ threw: true, exitCode: 42 });
+    debugSnapshot({ threw: true, exitCode: 42 });
   });
 
   // ---------------------------------------------------------------------------
@@ -308,7 +310,7 @@ describe.unit('cli/push.ts — pushPrismaSchema (UNIT, no real CLI/DB)', () => {
     await expect(pushPrismaSchema(baseOpts())).rejects.toThrow(/Schema directory not found/);
     expect(runCliSpy).not.toHaveBeenCalled();
     expect(assertSpy).not.toHaveBeenCalled();
-    vt.debugSnapshot({ shortCircuit: true });
+    debugSnapshot({ shortCircuit: true });
   });
 
   // ---------------------------------------------------------------------------
@@ -335,7 +337,7 @@ describe.unit('cli/push.ts — pushPrismaSchema (UNIT, no real CLI/DB)', () => {
       expect(validateArgs[2]).toBe(fakeWs);
       const [, , cwd] = runCliSpy.mock.calls[0]!;
       expect(cwd).toBe(fakeWs);
-      vt.debugSnapshot({ workspaceRoot: relative(sb.root, fakeWs) });
+      debugSnapshot({ workspaceRoot: relative(sb.root, fakeWs) });
     } finally {
       wrSpy.mockRestore();
     }
@@ -357,6 +359,6 @@ describe.unit('cli/push.ts — pushPrismaSchema (UNIT, no real CLI/DB)', () => {
 
     const [, , , envPassed] = runCliSpy.mock.calls[0]!;
     expect(envPassed).toBe(envObj);
-    vt.debugSnapshot({ envKeys: Object.keys(envPassed as any).sort() });
+    debugSnapshot({ envKeys: Object.keys(envPassed as any).sort() });
   });
 });

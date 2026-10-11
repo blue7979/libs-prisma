@@ -12,9 +12,11 @@ import type {
   PushOptions,
   WithCacheParams,
 } from '../types';
+import { afterEach, beforeEach, debugSnapshot, describe, expect, test, useSandbox, vi } from '@infra/testing';
+
 
 describe.component('Prisma CLI executors (generate + push)', () => {
-  let sb: ReturnType<typeof vt.useSandbox>;
+  let sb: ReturnType<typeof useSandbox>;
 
   let resolvePrismaBinSpy: ReturnType<typeof vi.spyOn>;
   let validateSpy: ReturnType<typeof vi.spyOn>;
@@ -24,7 +26,7 @@ describe.component('Prisma CLI executors (generate + push)', () => {
   let assertSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
-    sb = vt.useSandbox();
+    sb = useSandbox();
     sb.reset();
 
     sb.mkdir('src/prisma/main');
@@ -101,7 +103,7 @@ describe.component('Prisma CLI executors (generate + push)', () => {
 
       expect(resolvePrismaBinSpy).toHaveBeenCalledWith(sb.resolve('fake-root-gen'));
       expect(validateSpy).toHaveBeenCalledTimes(1);
-      vt.debugSnapshot({
+      debugSnapshot({
         resolveBinCalled: resolvePrismaBinSpy.mock.calls.length,
         validateCalled: validateSpy.mock.calls.length,
       });
@@ -130,7 +132,7 @@ describe.component('Prisma CLI executors (generate + push)', () => {
       expect(runCliSpy).not.toHaveBeenCalled();
       expect(assertSpy).not.toHaveBeenCalled();
       expect(result.cacheHit).toBe(true);
-      vt.debugSnapshot({
+      debugSnapshot({
         cacheHit: result.cacheHit,
         cliCalled: runCliSpy.mock.calls.length,
         assertCalled: assertSpy.mock.calls.length,
@@ -166,7 +168,7 @@ describe.component('Prisma CLI executors (generate + push)', () => {
       expect(stdio).toBeUndefined();
       expect(assertSpy).toHaveBeenCalledWith(expect.objectContaining({ exitCode: 0 }), 'generate');
       expect(result.cacheHit).toBe(false);
-      vt.debugSnapshot({
+      debugSnapshot({
         cliArgs: args,
         cacheHit: result.cacheHit,
         assertCommand: assertSpy.mock.calls[0]?.[1],
@@ -197,7 +199,7 @@ describe.component('Prisma CLI executors (generate + push)', () => {
 
       const passedOptions = withCacheSpy.mock.calls[0]?.[0];
       expect(passedOptions?.useCache).toBe(false);
-      vt.debugSnapshot({ bypassCache: passedOptions?.useCache });
+      debugSnapshot({ bypassCache: passedOptions?.useCache });
     });
 
     test('GIVEN stdio=inherit WHEN called THEN heavy work forwards stdio to runPrismaCli', async () => {
@@ -224,7 +226,7 @@ describe.component('Prisma CLI executors (generate + push)', () => {
 
       const runCall = runCliSpy.mock.calls[0]!;
       expect(runCall[4]).toBe('inherit');
-      vt.debugSnapshot({ stdio: runCall[4] });
+      debugSnapshot({ stdio: runCall[4] });
     });
   });
 
@@ -251,7 +253,7 @@ describe.component('Prisma CLI executors (generate + push)', () => {
       expect(args).toEqual(['db', 'push', '--config', sb.resolve('prisma.config.ts')]);
       expect(assertSpy).toHaveBeenCalledWith(expect.any(Object), 'db push');
       expect(result).toHaveProperty('exitCode', 0);
-      vt.debugSnapshot({ args });
+      debugSnapshot({ args });
     });
 
     test('GIVEN forceReset=true + acceptDataLoss=true WHEN called THEN both CLI flags appended', async () => {
@@ -264,7 +266,7 @@ describe.component('Prisma CLI executors (generate + push)', () => {
       const acceptIdx = args.indexOf('--accept-data-loss');
       expect(forceIdx).toBeGreaterThan(0);
       expect(acceptIdx).toBeGreaterThan(0);
-      vt.debugSnapshot({ args });
+      debugSnapshot({ args });
     });
 
     test('GIVEN dbUrl override WHEN called THEN --url flag is appended with provided value', async () => {
@@ -274,7 +276,7 @@ describe.component('Prisma CLI executors (generate + push)', () => {
       expect(args).toContain('--url');
       const urlArg = args[args.indexOf('--url') + 1];
       expect(urlArg).toBe('postgresql://x:y@z:5432/db');
-      vt.debugSnapshot({ args });
+      debugSnapshot({ args });
     });
 
     test('WHEN runPrismaCli returns non-zero THEN assertResultOk is still called and propagates throw', async () => {
@@ -291,7 +293,7 @@ describe.component('Prisma CLI executors (generate + push)', () => {
 
       await expect(pushPrismaSchema(baseOpts())).rejects.toThrow(/db push failed/);
       expect(assertSpy).toHaveBeenCalledTimes(1);
-      vt.debugSnapshot({ throws: true, exitCode: 13 });
+      debugSnapshot({ throws: true, exitCode: 13 });
     });
 
     test('WHEN buildPrismaEnv returns extended env THEN runPrismaCli receives that env object', async () => {
@@ -311,7 +313,7 @@ describe.component('Prisma CLI executors (generate + push)', () => {
         PRISMA_CLIENT_OUTPUT: 'custom/out',
         PROJECT_NAME: 'apps-api',
       });
-      vt.debugSnapshot({ envKeys: Object.keys(envPassed as any).sort() });
+      debugSnapshot({ envKeys: Object.keys(envPassed as any).sort() });
     });
   });
 });

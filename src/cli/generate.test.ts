@@ -11,11 +11,13 @@ import type {
   PrismaOtsName,
   WithCacheParams,
 } from '../types';
+import { afterEach, beforeEach, debugSnapshot, describe, expect, test, useSandbox, vi } from '@infra/testing';
+
 
 describe.unit('cli/generate.ts — generatePrismaClient (UNIT, no real CLI)', () => {
   const OTS_NAME = 'main' as any as PrismaOtsName;
 
-  let sb: ReturnType<typeof vt.useSandbox>;
+  let sb: ReturnType<typeof useSandbox>;
 
   let resolvePrismaBinSpy: ReturnType<typeof vi.spyOn>;
   let validateSpy: ReturnType<typeof vi.spyOn>;
@@ -45,7 +47,7 @@ describe.unit('cli/generate.ts — generatePrismaClient (UNIT, no real CLI)', ()
   }
 
   beforeEach(() => {
-    sb = vt.useSandbox();
+    sb = useSandbox();
     sb.reset();
 
     // warm sandbox layout so real fs helpers called inside spies don't throw if something leaks
@@ -110,7 +112,7 @@ describe.unit('cli/generate.ts — generatePrismaClient (UNIT, no real CLI)', ()
     const validateArgs = validateSpy.mock.calls[0]!;
     // validatePrismaProjectLayout(env, action, projectRoot)
     expect(validateArgs[2]).toBe(explicitRoot);
-    vt.debugSnapshot({
+    debugSnapshot({
       projectRootPassed: relative(sb.root, explicitRoot),
       validateCalled: validateSpy.mock.calls.length,
     });
@@ -144,7 +146,7 @@ describe.unit('cli/generate.ts — generatePrismaClient (UNIT, no real CLI)', ()
     await generatePrismaClient(baseOpts());
 
     expect(observedExistenceBeforeWork).toBe(true);
-    vt.debugSnapshot({
+    debugSnapshot({
       clientOutputDir: relative(sb.root, layout.clientOutputDir),
       dirExistsBeforeWork: observedExistenceBeforeWork,
     });
@@ -170,7 +172,7 @@ describe.unit('cli/generate.ts — generatePrismaClient (UNIT, no real CLI)', ()
     await generatePrismaClient(opts);
 
     expect(buildEnvSpy).toHaveBeenCalledWith(opts);
-    vt.debugSnapshot({ buildEnvCalled: buildEnvSpy.mock.calls.length });
+    debugSnapshot({ buildEnvCalled: buildEnvSpy.mock.calls.length });
   });
 
   // ---------------------------------------------------------------------------
@@ -199,7 +201,7 @@ describe.unit('cli/generate.ts — generatePrismaClient (UNIT, no real CLI)', ()
     expect(params.clientOutputDir).toBe(layout.clientOutputDir);
     expect(params.useCache).toBe(true);
     expect(params.projectRoot).toBe(opts.projectRoot);
-    vt.debugSnapshot({
+    debugSnapshot({
       useCache: params.useCache,
       projectRoot: relative(sb.root, params.projectRoot!),
     });
@@ -221,7 +223,7 @@ describe.unit('cli/generate.ts — generatePrismaClient (UNIT, no real CLI)', ()
 
     const params = withCacheSpy.mock.calls[0]![0] as WithCacheParams;
     expect(params.useCache).toBe(false);
-    vt.debugSnapshot({ useCache: params.useCache });
+    debugSnapshot({ useCache: params.useCache });
   });
 
   // ---------------------------------------------------------------------------
@@ -249,7 +251,7 @@ describe.unit('cli/generate.ts — generatePrismaClient (UNIT, no real CLI)', ()
     expect(result.cacheHit).toBe(true);
     expect(result.exitCode).toBe(0);
     expect(result.schemaDir).toBe(layout.schemaDir);
-    vt.debugSnapshot({ cacheHit: result.cacheHit, stdout: result.stdout });
+    debugSnapshot({ cacheHit: result.cacheHit, stdout: result.stdout });
   });
 
   // ---------------------------------------------------------------------------
@@ -285,7 +287,7 @@ describe.unit('cli/generate.ts — generatePrismaClient (UNIT, no real CLI)', ()
     expect(cwd).toBe(opts.projectRoot);
     expect(env).toBe(resolvedEnv);
     expect(stdio).toBeUndefined();
-    vt.debugSnapshot({ args, cwd: relative(sb.root, cwd as string) });
+    debugSnapshot({ args, cwd: relative(sb.root, cwd as string) });
   });
 
   test('GIVEN stdio=inherit WHEN cache miss THEN forwards stdio to runPrismaCli', async () => {
@@ -304,7 +306,7 @@ describe.unit('cli/generate.ts — generatePrismaClient (UNIT, no real CLI)', ()
 
     const [, , , , stdio] = runCliSpy.mock.calls[0]!;
     expect(stdio).toBe('inherit');
-    vt.debugSnapshot({ stdio });
+    debugSnapshot({ stdio });
   });
 
   // ---------------------------------------------------------------------------
@@ -337,7 +339,7 @@ describe.unit('cli/generate.ts — generatePrismaClient (UNIT, no real CLI)', ()
     const [result, command] = assertSpy.mock.calls[0]!;
     expect(command).toBe('generate');
     expect((result as PrismaCliResult).exitCode).toBe(0);
-    vt.debugSnapshot({ command, exitCode: (result as PrismaCliResult).exitCode });
+    debugSnapshot({ command, exitCode: (result as PrismaCliResult).exitCode });
   });
 
   // ---------------------------------------------------------------------------
@@ -368,7 +370,7 @@ describe.unit('cli/generate.ts — generatePrismaClient (UNIT, no real CLI)', ()
 
     await expect(generatePrismaClient(baseOpts())).rejects.toThrow('boom:generate');
     expect(assertSpy).toHaveBeenCalledTimes(1);
-    vt.debugSnapshot({ threw: true, command: assertSpy.mock.calls[0]?.[1] });
+    debugSnapshot({ threw: true, command: assertSpy.mock.calls[0]?.[1] });
   });
 
   // ---------------------------------------------------------------------------
@@ -407,7 +409,7 @@ describe.unit('cli/generate.ts — generatePrismaClient (UNIT, no real CLI)', ()
       exitCode: 0,
       cacheHit: false,
     });
-    vt.debugSnapshot({ keys: Object.keys(result).sort() });
+    debugSnapshot({ keys: Object.keys(result).sort() });
   });
 
   // ---------------------------------------------------------------------------
@@ -422,7 +424,7 @@ describe.unit('cli/generate.ts — generatePrismaClient (UNIT, no real CLI)', ()
     await expect(generatePrismaClient(baseOpts())).rejects.toThrow(/prisma.config.ts not found/);
     expect(withCacheSpy).not.toHaveBeenCalled();
     expect(runCliSpy).not.toHaveBeenCalled();
-    vt.debugSnapshot({ shortCircuit: true });
+    debugSnapshot({ shortCircuit: true });
   });
 
   // ---------------------------------------------------------------------------
@@ -462,7 +464,7 @@ describe.unit('cli/generate.ts — generatePrismaClient (UNIT, no real CLI)', ()
     const params = withCacheSpy.mock.calls[0]![0] as WithCacheParams;
     expect(params.clientOutputDir).toBe(custom);
     expect(observedExistenceBeforeWork).toBe(true);
-    vt.debugSnapshot({
+    debugSnapshot({
       customOutput: relative(sb.root, custom),
       dirExistsBeforeWork: observedExistenceBeforeWork,
     });
@@ -480,6 +482,6 @@ describe.unit('cli/generate.ts — generatePrismaClient (UNIT, no real CLI)', ()
     // validate
     const { existsSync } = require('node:fs');
     expect(existsSync(fakeLayout().clientOutputDir)).toBe(true);
-    vt.debugSnapshot({ dirCreated: existsSync(fakeLayout().clientOutputDir) });
+    debugSnapshot({ dirCreated: existsSync(fakeLayout().clientOutputDir) });
   });
 });

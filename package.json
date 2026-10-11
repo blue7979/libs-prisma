@@ -15,10 +15,17 @@
     }
   },
   "dependencies": {
+    "@infra/build": "workspace:*",
     "@infra/config": "workspace:*",
     "@infra/definitions": "workspace:*",
     "@infra/kits": "workspace:*",
+    "@infra/runtime": "workspace:*",
+    "@infra/testing": "workspace:*",
     "@infra/utils": "workspace:*",
+    "@libs/common": "workspace:*",
+    "@nestjs-modules/database": "workspace:*",
+    "@nestjs/helpers": "workspace:*",
+    "@nestjs/storage": "workspace:*",
     "@prisma/adapter-better-sqlite3": "^7.8.0",
     "better-sqlite3": "^13.0.3"
   }
