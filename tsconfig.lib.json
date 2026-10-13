@@ -1,23 +1,6 @@
 {
   "extends": "../infra/kits/src/presets/tsconfig/tsconfig.ts-libs.json",
-  "references": [
-    {
-      "path": "../infra/testing/tsconfig.lib.json"
-    },
-    {
-      "path": "../infra/utils/tsconfig.lib.json"
-    },
-    {
-      "path": "../infra/kits/tsconfig.lib.json"
-    },
-    {
-      "path": "../infra/definitions/tsconfig.lib.json"
-    },
-    {
-      "path": "../infra/config/tsconfig.lib.json"
-    },
-    {
-      "path": "../../generated/tsconfig.lib.json"
-    }
-  ]
+  "compilerOptions": {
+    "rootDir": "../.."
+  }
 }
