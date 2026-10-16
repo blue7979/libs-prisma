@@ -16,7 +16,7 @@
  *   - 이 모듈을 import 하는 caller 측 워크스페이스 package.json에는 반드시
  *     `better-sqlite3` 와 `@prisma/adapter-better-sqlite3` 가 존재해야 한다.
  *   - 현재는 NestJS Injectable Service Wrapper를 제공하지 않음.
- *     필요시 `@nestjs-modules/database/prisma/sqlite/` 에서
+ *     필요시 `@nestjs/prisma/sqlite/` 에서
  *     이 factory를 재사용해서 PostgresPrismaService 와 동일 패턴으로 HOF 구현.
  * ------------------------------------------------------------------
  */

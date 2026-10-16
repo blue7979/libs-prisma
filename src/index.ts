@@ -14,6 +14,7 @@
  *   - pipeline/          : push → generate → seed → studio 4단계 오케스트레이터 (Step ⑥ 신규 구현 완료)
  *   - studio/            : Prisma Studio 백그라운드 실행 (Step ⑥에서 함께 구현 완료)
  *   - connection/        : Prisma 전용 DB URL builder (Step ⑦ Option C — 완전 분리 구현 완료)
+ *   - config/            : Prisma CLI config / seed command / schema 검증 (createPrismaConfig)
  * ------------------------------------------------------------------
  * 🔒 SSoT 패턴 (Single Source of Truth)
  *   - PrismaDatabaseType : @infra/definitions Docker.Config.PrismaDatabaseType
@@ -29,4 +30,5 @@ export * from './seed';
 export * from './pipeline';
 export * from './studio';
 export * from './connection';
+export * from './config';
 export * from './runtime';
