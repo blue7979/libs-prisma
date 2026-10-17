@@ -2,5 +2,10 @@
   "extends": "../infra/kits/src/presets/tsconfig/tsconfig.ts-spec.json",
   "compilerOptions": {
     "rootDir": "../.."
-  }
+  },
+  "references": [
+    {
+      "path": "./tsconfig.lib.json"
+    }
+  ]
 }
